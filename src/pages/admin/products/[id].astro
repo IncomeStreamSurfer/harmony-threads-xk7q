@@ -1,0 +1,84 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { requireAdmin } from '../../../lib/requireAdmin';
+import { ssrClient } from '../../../lib/supabase';
+
+export const prerender = false;
+
+const guard = await requireAdmin(Astro);
+if (guard) return guard;
+
+const sb = ssrClient(Astro.cookies)!;
+const { id } = Astro.params;
+const { data: product } = await sb.from('products').select('*').eq('id', id!).maybeSingle();
+if (!product) return new Response('Not found', { status: 404 });
+
+const saved = Astro.url.searchParams.get('saved');
+---
+
+<AdminLayout title={`Edit: ${product.name}`}>
+  {saved && <div style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); padding: 0.75rem 1rem; border-radius: 2px; margin-bottom: 1.5rem; font-size: 0.875rem; color: #4ade80;">Changes saved successfully.</div>}
+
+  <form method="POST" action={`/api/admin/products/${product.id}`}>
+    <div style="display: flex; flex-direction: column; gap: 1.25rem; max-width: 800px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(250,247,242,0.5); margin-bottom: 0.4rem;">Name</label>
+          <input type="text" name="name" value={product.name} required style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.6rem 0.75rem; border-radius: 2px; color: #faf7f2; font-size: 0.875rem;" />
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(250,247,242,0.5); margin-bottom: 0.4rem;">Slug</label>
+          <input type="text" name="slug" value={product.slug} required style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.6rem 0.75rem; border-radius: 2px; color: #faf7f2; font-size: 0.875rem; font-family: monospace;" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(250,247,242,0.5); margin-bottom: 0.4rem;">Price (cents)</label>
+          <input type="number" name="price_pence" value={product.price_pence} required style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.6rem 0.75rem; border-radius: 2px; color: #faf7f2; font-size: 0.875rem;" />
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(250,247,242,0.5); margin-bottom: 0.4rem;">Inventory</label>
+          <input type="number" name="inventory" value={product.inventory} style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.6rem 0.75rem; border-radius: 2px; color: #faf7f2; font-size: 0.875rem;" />
+        </div>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(250,247,242,0.5); margin-bottom: 0.4rem;">Description</label>
+        <textarea name="description" rows="3" style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.6rem 0.75rem; border-radius: 2px; color: #faf7f2; font-size: 0.875rem; resize: vertical;">{product.description ?? ''}</textarea>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(250,247,242,0.5); margin-bottom: 0.4rem;">Body HTML</label>
+        <textarea name="body_html" rows="12" style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.6rem 0.75rem; border-radius: 2px; color: #faf7f2; font-size: 0.8rem; resize: vertical; font-family: monospace;">{product.body_html ?? ''}</textarea>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(250,247,242,0.5); margin-bottom: 0.4rem;">Image URL</label>
+        <input type="text" name="image_url" value={product.image_url ?? ''} style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.6rem 0.75rem; border-radius: 2px; color: #faf7f2; font-size: 0.875rem;" />
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(250,247,242,0.5); margin-bottom: 0.4rem;">Meta Title</label>
+          <input type="text" name="meta_title" value={product.meta_title ?? ''} style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.6rem 0.75rem; border-radius: 2px; color: #faf7f2; font-size: 0.875rem;" />
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(250,247,242,0.5); margin-bottom: 0.4rem;">Meta Description</label>
+          <input type="text" name="meta_description" value={product.meta_description ?? ''} style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.6rem 0.75rem; border-radius: 2px; color: #faf7f2; font-size: 0.875rem;" />
+        </div>
+      </div>
+
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" name="published" checked={!!product.published_at} />
+        <span style="font-size: 0.875rem;">Published</span>
+      </label>
+
+      <div style="display: flex; gap: 0.75rem;">
+        <button type="submit" style="background: var(--brand-accent); color: #fff; padding: 0.6rem 1.5rem; border: none; border-radius: 2px; font-size: 0.875rem; font-weight: 600; cursor: pointer;">Save Changes</button>
+        <a href="/admin/products" style="background: transparent; color: rgba(250,247,242,0.6); padding: 0.6rem 1.5rem; border: 1px solid rgba(250,247,242,0.15); border-radius: 2px; font-size: 0.875rem; font-weight: 600; text-decoration: none;">Cancel</a>
+        <a href={`/product/${product.slug}`} target="_blank" style="background: transparent; color: rgba(250,247,242,0.4); padding: 0.6rem 1.5rem; border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; font-size: 0.875rem; text-decoration: none;">View product ↗</a>
+      </div>
+    </div>
+  </form>
+</AdminLayout>

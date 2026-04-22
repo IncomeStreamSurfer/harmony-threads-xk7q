@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://harmony-threads-xk7q.vercel.app/sitemap-index.xml

@@ -1,0 +1,364 @@
+---
+import Base from '../../layouts/Base.astro';
+import { anonClient } from '../../lib/supabase';
+import { safeHtml } from '../../lib/sanitize';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+const sb = anonClient();
+
+if (!sb) return Astro.redirect('/shop');
+
+const { data: product } = await sb
+  .from('products')
+  .select('id, slug, name, description, body_html, price_pence, compare_at_pence, currency, sku, inventory, image_url, tags, vendor, product_type, meta_title, meta_description')
+  .eq('slug', slug!)
+  .maybeSingle();
+
+if (!product) return Astro.redirect('/shop');
+
+const { data: variants } = await sb
+  .from('product_variants')
+  .select('id, sku, option1_name, option1_value, option2_name, option2_value, price_pence, compare_at_pence, inventory, image_url')
+  .eq('product_id', product.id)
+  .order('option1_value');
+
+const { data: categories } = await sb
+  .from('product_categories')
+  .select('categories(slug, name)')
+  .eq('product_id', product.id);
+
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://harmony-threads-xk7q.vercel.app';
+
+const productSchema = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": product.name,
+  "description": product.description,
+  "image": product.image_url,
+  "offers": {
+    "@type": "Offer",
+    "price": (product.price_pence / 100).toFixed(2),
+    "priceCurrency": product.currency ?? "USD",
+    "availability": product.inventory > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+    "url": `${siteUrl}/product/${product.slug}`
+  }
+};
+
+const breadcrumb = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": siteUrl },
+    { "@type": "ListItem", "position": 2, "name": "Shop", "item": `${siteUrl}/shop` },
+    { "@type": "ListItem", "position": 3, "name": product.name, "item": `${siteUrl}/product/${product.slug}` }
+  ]
+};
+
+// Get unique option values for variant selection
+const sizes = [...new Set((variants ?? []).filter(v => v.option1_name === 'Size').map(v => v.option1_value))];
+const colors = [...new Set((variants ?? []).filter(v => v.option2_name === 'Color').map(v => v.option2_value))];
+const formats = [...new Set((variants ?? []).filter(v => v.option1_name === 'Format').map(v => v.option1_value))];
+
+const colorMap: Record<string, string> = {
+  'green': '#4a7c59',
+  'gray': '#6b7280',
+  'red': '#dc2626',
+};
+---
+
+<Base
+  title={product.meta_title ?? `${product.name} | Harmony Threads`}
+  description={product.meta_description ?? product.description?.slice(0, 160) ?? ''}
+  ogImage={product.image_url ?? undefined}
+  ogType="product"
+  structuredData={[productSchema, breadcrumb]}
+>
+  <div style="padding-top: 5rem; min-height: 100vh; background: #0f0f0f;">
+    <!-- Breadcrumb -->
+    <div class="container py-4">
+      <nav class="flex items-center gap-2 text-xs" style="color: rgba(250,247,242,0.4);">
+        <a href="/" class="hover:text-[#E63946]">Home</a>
+        <span>/</span>
+        <a href="/shop" class="hover:text-[#E63946]">Shop</a>
+        <span>/</span>
+        <span style="color: rgba(250,247,242,0.7);">{product.name}</span>
+      </nav>
+    </div>
+
+    <section style="padding: 2rem 0 6rem;">
+      <div class="container">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16">
+          <!-- Product Image -->
+          <div>
+            <div style="aspect-ratio: 4/5; border-radius: 2px; overflow: hidden; background: #1a1a1a;">
+              {product.image_url && (
+                <img 
+                  id="main-product-img"
+                  src={product.image_url} 
+                  alt={`${product.name} — Harmony Threads`}
+                  style="width: 100%; height: 100%; object-fit: cover;"
+                />
+              )}
+            </div>
+          </div>
+
+          <!-- Product Details -->
+          <div style="padding: 1rem 0;">
+            <p class="text-xs font-semibold tracking-widest uppercase mb-3" style="color: rgba(250,247,242,0.4);">{product.vendor} · {product.product_type}</p>
+            <h1 style="font-family: var(--font-display); font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: 900; line-height: 1.0; letter-spacing: -0.02em; margin-bottom: 1rem;">{product.name}</h1>
+            
+            <!-- Price -->
+            <div class="flex items-center gap-3 mb-6">
+              <span id="current-price" style="font-size: 1.8rem; font-weight: 700;">${(product.price_pence / 100).toFixed(2)}</span>
+              {product.compare_at_pence && (
+                <span style="font-size: 1.1rem; color: rgba(250,247,242,0.35); text-decoration: line-through;">${(product.compare_at_pence / 100).toFixed(2)}</span>
+              )}
+              {product.compare_at_pence && (
+                <span style="background: var(--brand-accent); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 2px;">SALE</span>
+              )}
+            </div>
+
+            <p style="font-size: 0.95rem; line-height: 1.7; color: rgba(250,247,242,0.65); margin-bottom: 1.5rem;">{product.description}</p>
+
+            <!-- Variant Selection: Sizes -->
+            {sizes.length > 0 && (
+              <div class="mb-6">
+                <p class="text-xs font-semibold tracking-widest uppercase mb-3" style="color: rgba(250,247,242,0.5);">Size — <span id="selected-size" style="color: var(--brand-paper);">{sizes[0]}</span></p>
+                <div class="flex flex-wrap gap-2" id="size-buttons">
+                  {sizes.map((size) => (
+                    <button 
+                      class="size-btn text-sm font-medium transition-all"
+                      data-size={size}
+                      data-selected={size === sizes[0] ? "true" : "false"}
+                      style={`padding: 0.5rem 1rem; border: 1px solid ${size === sizes[0] ? 'var(--brand-accent)' : 'rgba(250,247,242,0.2)'}; border-radius: 2px; background: ${size === sizes[0] ? 'rgba(230,57,70,0.1)' : 'transparent'}; color: ${size === sizes[0] ? 'var(--brand-accent)' : 'rgba(250,247,242,0.7)'}; cursor: pointer;`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <!-- Variant Selection: Colors -->
+            {colors.length > 0 && (
+              <div class="mb-6">
+                <p class="text-xs font-semibold tracking-widest uppercase mb-3" style="color: rgba(250,247,242,0.5);">Color — <span id="selected-color" style="color: var(--brand-paper);">{colors[0]}</span></p>
+                <div class="flex gap-3" id="color-buttons">
+                  {colors.map((color) => (
+                    <button
+                      class="color-btn"
+                      data-color={color}
+                      data-selected={color === colors[0] ? "true" : "false"}
+                      aria-label={`Color: ${color}`}
+                      style={`width: 32px; height: 32px; border-radius: 50%; background: ${colorMap[color] ?? '#888'}; border: 2px solid ${color === colors[0] ? 'var(--brand-paper)' : 'transparent'}; cursor: pointer; transition: border-color 0.2s;`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <!-- Format Selection (for digital books) -->
+            {formats.length > 0 && (
+              <div class="mb-6">
+                <p class="text-xs font-semibold tracking-widest uppercase mb-3" style="color: rgba(250,247,242,0.5);">Format — <span id="selected-format" style="color: var(--brand-paper);">{formats[0]}</span></p>
+                <div class="flex flex-wrap gap-2" id="format-buttons">
+                  {formats.map((fmt) => (
+                    <button 
+                      class="format-btn text-sm font-medium transition-all"
+                      data-format={fmt}
+                      data-selected={fmt === formats[0] ? "true" : "false"}
+                      style={`padding: 0.5rem 1.25rem; border: 1px solid ${fmt === formats[0] ? 'var(--brand-accent)' : 'rgba(250,247,242,0.2)'}; border-radius: 2px; background: ${fmt === formats[0] ? 'rgba(230,57,70,0.1)' : 'transparent'}; color: ${fmt === formats[0] ? 'var(--brand-accent)' : 'rgba(250,247,242,0.7)'}; cursor: pointer;`}
+                    >
+                      {fmt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <!-- Add to Cart -->
+            <div class="flex flex-col gap-3 mt-8">
+              <button 
+                id="add-to-cart"
+                class="btn-primary w-full justify-center text-base py-4"
+                data-product-id={product.id}
+                data-product-name={product.name}
+                data-product-price={product.price_pence}
+                data-product-image={product.image_url}
+                data-variants={JSON.stringify(variants ?? [])}
+              >
+                Add to Cart
+              </button>
+              <button 
+                id="buy-now"
+                class="btn-ghost w-full justify-center text-base py-4"
+                data-product-id={product.id}
+              >
+                Buy Now — Checkout Directly
+              </button>
+            </div>
+
+            <!-- Tags -->
+            {product.tags && product.tags.length > 0 && (
+              <div class="mt-6 flex flex-wrap gap-2">
+                {product.tags.map((tag: string) => (
+                  <a href={`/tags/${tag.toLowerCase().replace(/\s+/g, '-')}`} class="text-xs" style="background: rgba(250,247,242,0.05); border: 1px solid rgba(250,247,242,0.1); padding: 0.25rem 0.6rem; border-radius: 2px; color: rgba(250,247,242,0.5); transition: color 0.2s; hover: color: var(--brand-accent);">
+                    #{tag}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <!-- Body content -->
+        {product.body_html && (
+          <div style="margin-top: 5rem; padding-top: 4rem; border-top: 1px solid rgba(250,247,242,0.08);">
+            <h2 style="font-family: var(--font-display); font-size: 1.8rem; font-weight: 700; margin-bottom: 2rem;">Product Details</h2>
+            <div class="prose" style="color: rgba(250,247,242,0.7); max-width: 720px;" set:html={safeHtml(product.body_html)} />
+          </div>
+        )}
+
+        <!-- Related collections -->
+        <div style="margin-top: 4rem; padding-top: 3rem; border-top: 1px solid rgba(250,247,242,0.08);">
+          <p class="text-sm" style="color: rgba(250,247,242,0.5);">
+            Browse more in our collections: 
+            <a href="/collections/graphic-shirts" style="color: var(--brand-accent);">Graphic Shirts</a>,
+            <a href="/collections/digital-books" style="color: var(--brand-accent);">Digital Books</a>, and
+            <a href="/collections/accessories" style="color: var(--brand-accent);">Accessories</a>.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+</Base>
+
+<script>
+  // Cart drawer functionality
+  const variantsData: any[] = JSON.parse(
+    document.getElementById('add-to-cart')?.getAttribute('data-variants') ?? '[]'
+  );
+
+  let selectedSize = document.querySelector('.size-btn[data-selected="true"]')?.getAttribute('data-size') ?? null;
+  let selectedColor = document.querySelector('.color-btn[data-selected="true"]')?.getAttribute('data-color') ?? null;
+  let selectedFormat = document.querySelector('.format-btn[data-selected="true"]')?.getAttribute('data-format') ?? null;
+
+  // Size selection
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.size-btn').forEach(b => {
+        (b as HTMLButtonElement).style.borderColor = 'rgba(250,247,242,0.2)';
+        (b as HTMLButtonElement).style.background = 'transparent';
+        (b as HTMLButtonElement).style.color = 'rgba(250,247,242,0.7)';
+      });
+      (btn as HTMLButtonElement).style.borderColor = 'var(--brand-accent)';
+      (btn as HTMLButtonElement).style.background = 'rgba(230,57,70,0.1)';
+      (btn as HTMLButtonElement).style.color = 'var(--brand-accent)';
+      selectedSize = btn.getAttribute('data-size');
+      const el = document.getElementById('selected-size');
+      if (el) el.textContent = selectedSize ?? '';
+      updatePrice();
+    });
+  });
+
+  // Color selection
+  document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.color-btn').forEach(b => {
+        (b as HTMLButtonElement).style.border = '2px solid transparent';
+      });
+      (btn as HTMLButtonElement).style.border = '2px solid var(--brand-paper)';
+      selectedColor = btn.getAttribute('data-color');
+      const el = document.getElementById('selected-color');
+      if (el) el.textContent = selectedColor ?? '';
+      updatePrice();
+    });
+  });
+
+  // Format selection
+  document.querySelectorAll('.format-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.format-btn').forEach(b => {
+        (b as HTMLButtonElement).style.borderColor = 'rgba(250,247,242,0.2)';
+        (b as HTMLButtonElement).style.background = 'transparent';
+        (b as HTMLButtonElement).style.color = 'rgba(250,247,242,0.7)';
+      });
+      (btn as HTMLButtonElement).style.borderColor = 'var(--brand-accent)';
+      (btn as HTMLButtonElement).style.background = 'rgba(230,57,70,0.1)';
+      (btn as HTMLButtonElement).style.color = 'var(--brand-accent)';
+      selectedFormat = btn.getAttribute('data-format');
+      const el = document.getElementById('selected-format');
+      if (el) el.textContent = selectedFormat ?? '';
+      updatePrice();
+    });
+  });
+
+  function getMatchingVariant() {
+    if (variantsData.length === 0) return null;
+    return variantsData.find(v => {
+      const sizeMatch = !selectedSize || v.option1_value === selectedSize;
+      const colorMatch = !selectedColor || v.option2_value === selectedColor;
+      const fmtMatch = !selectedFormat || v.option1_value === selectedFormat;
+      return sizeMatch && colorMatch && fmtMatch;
+    }) ?? variantsData[0];
+  }
+
+  function updatePrice() {
+    const v = getMatchingVariant();
+    const priceEl = document.getElementById('current-price');
+    if (v && priceEl) {
+      priceEl.textContent = `$${(v.price_pence / 100).toFixed(2)}`;
+    }
+  }
+
+  async function handleCheckout(buyNow = false) {
+    const btn = document.getElementById('add-to-cart')!;
+    const productId = btn.getAttribute('data-product-id')!;
+    const name = btn.getAttribute('data-product-name')!;
+    const basePrice = parseInt(btn.getAttribute('data-product-price')!);
+    const image = btn.getAttribute('data-product-image');
+    const variant = getMatchingVariant();
+
+    const item = {
+      product_id: productId,
+      qty: 1,
+      variant_sku: variant?.sku ?? undefined,
+      name,
+      price: (variant?.price_pence ?? basePrice) / 100,
+      image: image ?? undefined,
+    };
+
+    if (buyNow) {
+      // Direct checkout
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: [item] }),
+      });
+      const { url, error } = await res.json();
+      if (url) window.location.href = url;
+      else alert(error ?? 'Checkout failed');
+    } else {
+      // Add to local cart and show confirmation
+      const existing = JSON.parse(localStorage.getItem('ht_cart') ?? '[]');
+      const idx = existing.findIndex((i: any) => i.product_id === item.product_id && i.variant_sku === item.variant_sku);
+      if (idx >= 0) existing[idx].qty += 1;
+      else existing.push(item);
+      localStorage.setItem('ht_cart', JSON.stringify(existing));
+      window.dispatchEvent(new CustomEvent('cart-updated', { detail: existing }));
+      
+      const origText = btn.textContent;
+      btn.textContent = '✓ Added to Cart';
+      btn.style.background = '#16a34a';
+      setTimeout(() => {
+        btn.textContent = origText;
+        btn.style.background = '';
+      }, 2000);
+    }
+  }
+
+  document.getElementById('add-to-cart')?.addEventListener('click', () => handleCheckout(false));
+  document.getElementById('buy-now')?.addEventListener('click', () => handleCheckout(true));
+</script>

@@ -1,0 +1,94 @@
+---
+import Base from '../layouts/Base.astro';
+
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://harmony-threads-xk7q.vercel.app';
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "name": "About Harmony Threads",
+  "url": `${siteUrl}/about`,
+  "description": "The story behind Harmony Threads — music-inspired apparel and media."
+};
+
+const breadcrumb = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": siteUrl },
+    { "@type": "ListItem", "position": 2, "name": "Our Story", "item": `${siteUrl}/about` }
+  ]
+};
+---
+
+<Base
+  title="Our Story | Harmony Threads"
+  description="The story behind Harmony Threads — a music-inspired merch store built for people who live the soundtrack. Rock tees, music books, curated accessories."
+  structuredData={[schema, breadcrumb]}
+>
+  <div style="padding-top: 5rem; min-height: 100vh; background: #0f0f0f;">
+    <section style="padding: 6rem 0; border-bottom: 1px solid rgba(250,247,242,0.06);">
+      <div class="container">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+          <div>
+            <p class="text-xs font-semibold tracking-widest uppercase mb-4" style="color: var(--brand-accent);">Our story</p>
+            <h1 style="font-family: var(--font-display); font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 900; line-height: 0.95; letter-spacing: -0.03em; margin-bottom: 2rem;">
+              Started from a record collection.
+            </h1>
+            <p style="font-size: 1.05rem; line-height: 1.8; color: rgba(250,247,242,0.65); margin-bottom: 1.5rem;">
+              Harmony Threads started the way most obsessions do — accidentally. The founder had a problem: too many great band tees on one hand, too many awful ones on the other. The market was flooded with cheap prints on thin cotton, licensed logos slapped on garments that fell apart in the wash.
+            </p>
+            <p style="font-size: 1.05rem; line-height: 1.8; color: rgba(250,247,242,0.65); margin-bottom: 1.5rem;">
+              The response was to build something different. Source the garments right. Choose designs that carry real meaning. Pair the apparel with music media — digital books, reference guides — that give context to the artists on the shirts. The goal was a shop where every product justified its own existence.
+            </p>
+            <p style="font-size: 1.05rem; line-height: 1.8; color: rgba(250,247,242,0.65);">
+              Harmony Threads launched in 2024 with three products and one principle: only stock what you'd actually wear or read yourself.
+            </p>
+          </div>
+          <div>
+            <div style="aspect-ratio: 1; border-radius: 2px; overflow: hidden; background: #111; border: 1px solid rgba(250,247,242,0.08);">
+              <img 
+                src="https://burst.shopifycdn.com/photos/forest-hiker.jpg?width=1000" 
+                alt="Rock music festival — the world that inspired Harmony Threads"
+                style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Values -->
+    <section style="padding: 6rem 0;">
+      <div class="container">
+        <p class="text-xs font-semibold tracking-widest uppercase mb-12" style="color: var(--brand-accent); text-align: center;">What we stand for</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div style="border-left: 2px solid var(--brand-accent); padding-left: 1.5rem;">
+            <h3 style="font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem;">Curation over volume</h3>
+            <p style="color: rgba(250,247,242,0.6); line-height: 1.7; font-size: 0.95rem;">We stock three products, not three hundred. Every item in the catalogue was chosen deliberately. If it doesn't earn its place, it doesn't ship.</p>
+          </div>
+          <div style="border-left: 2px solid var(--brand-accent); padding-left: 1.5rem;">
+            <h3 style="font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem;">Context, not merch</h3>
+            <p style="color: rgba(250,247,242,0.6); line-height: 1.7; font-size: 0.95rem;">A band tee without the music is just a logo. We pair every piece of apparel with the deeper catalogue — books, guides, liner notes — so what you wear reflects what you know.</p>
+          </div>
+          <div style="border-left: 2px solid var(--brand-accent); padding-left: 1.5rem;">
+            <h3 style="font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem;">Built to last</h3>
+            <p style="color: rgba(250,247,242,0.6); line-height: 1.7; font-size: 0.95rem;">150g pre-shrunk cotton. Prints that survive the wash. Sizes that fit right. We've rejected cheaper alternatives at every turn because the product has to outlast the moment you bought it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section style="background: #111; padding: 5rem 0; border-top: 1px solid rgba(250,247,242,0.06);">
+      <div class="container" style="text-align: center;">
+        <h2 style="font-family: var(--font-display); font-size: 2.5rem; font-weight: 900; margin-bottom: 1rem;">See the full catalogue</h2>
+        <p style="color: rgba(250,247,242,0.6); margin-bottom: 2rem;">Three products. One obsession. Browse the collection.</p>
+        <div class="flex gap-4 justify-center">
+          <a href="/shop" class="btn-primary">Shop Now</a>
+          <a href="/contact" class="btn-ghost">Get in Touch</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</Base>

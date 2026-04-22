@@ -1,0 +1,92 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { requireAdmin } from '../../lib/requireAdmin';
+import { ssrClient } from '../../lib/supabase';
+
+export const prerender = false;
+
+const guard = await requireAdmin(Astro);
+if (guard) return guard;
+
+const sb = ssrClient(Astro.cookies)!;
+
+const [
+  { count: productCount },
+  { count: orderCount },
+  { count: msgCount },
+  { count: subscriberCount },
+] = await Promise.all([
+  sb.from('products').select('*', { count: 'exact', head: true }),
+  sb.from('orders').select('*', { count: 'exact', head: true }),
+  sb.from('contact_messages').select('*', { count: 'exact', head: true }),
+  sb.from('subscribers').select('*', { count: 'exact', head: true }),
+]);
+
+const { data: recentOrders } = await sb
+  .from('orders')
+  .select('id, customer_email, amount_total, currency, status, created_at')
+  .order('created_at', { ascending: false })
+  .limit(5);
+---
+
+<AdminLayout title="Dashboard">
+  <!-- Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    {[
+      { label: 'Products', value: productCount ?? 0, href: '/admin/products' },
+      { label: 'Orders', value: orderCount ?? 0, href: '/admin/orders' },
+      { label: 'Messages', value: msgCount ?? 0, href: '/admin/messages' },
+      { label: 'Subscribers', value: subscriberCount ?? 0, href: '#' },
+    ].map(stat => (
+      <a href={stat.href} style="display: block; background: #1a1a1a; border: 1px solid rgba(250,247,242,0.08); padding: 1.25rem; border-radius: 2px; text-decoration: none; transition: border-color 0.2s;" onmouseover="this.style.borderColor='rgba(230,57,70,0.4)'" onmouseout="this.style.borderColor='rgba(250,247,242,0.08)'">
+        <p style="font-size: 2rem; font-family: var(--font-display); font-weight: 900; margin-bottom: 0.25rem;">{stat.value}</p>
+        <p style="font-size: 0.8rem; color: rgba(250,247,242,0.5);">{stat.label}</p>
+      </a>
+    ))}
+  </div>
+
+  <!-- Recent orders -->
+  <div style="background: #111; border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; padding: 1.5rem; margin-bottom: 2rem;">
+    <div class="flex items-center justify-between mb-4">
+      <h2 style="font-size: 1rem; font-weight: 600;">Recent Orders</h2>
+      <a href="/admin/orders" style="font-size: 0.8rem; color: var(--brand-accent);">View all →</a>
+    </div>
+    {!recentOrders?.length ? (
+      <p style="color: rgba(250,247,242,0.4); font-size: 0.875rem;">No orders yet.</p>
+    ) : (
+      <table style="width: 100%; font-size: 0.875rem; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid rgba(250,247,242,0.08);">
+            <th style="text-align: left; padding: 0.5rem 0; color: rgba(250,247,242,0.4); font-weight: 500;">Email</th>
+            <th style="text-align: left; padding: 0.5rem 0; color: rgba(250,247,242,0.4); font-weight: 500;">Amount</th>
+            <th style="text-align: left; padding: 0.5rem 0; color: rgba(250,247,242,0.4); font-weight: 500;">Status</th>
+            <th style="text-align: left; padding: 0.5rem 0; color: rgba(250,247,242,0.4); font-weight: 500;">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {recentOrders.map(o => (
+            <tr style="border-bottom: 1px solid rgba(250,247,242,0.04);">
+              <td style="padding: 0.6rem 0; color: rgba(250,247,242,0.8);">{o.customer_email ?? '—'}</td>
+              <td style="padding: 0.6rem 0;">${((o.amount_total ?? 0) / 100).toFixed(2)}</td>
+              <td style="padding: 0.6rem 0;">
+                <span style={`font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 2px; background: ${o.status === 'paid' ? 'rgba(34,197,94,0.15)' : 'rgba(250,247,242,0.08)'}; color: ${o.status === 'paid' ? '#4ade80' : 'rgba(250,247,242,0.6)'};`}>{o.status}</span>
+              </td>
+              <td style="padding: 0.6rem 0; color: rgba(250,247,242,0.5);">{new Date(o.created_at).toLocaleDateString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </div>
+
+  <!-- Quick links -->
+  <div style="background: #111; border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; padding: 1.5rem;">
+    <h2 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Quick Actions</h2>
+    <div class="flex flex-wrap gap-3">
+      <a href="/admin/products" style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.3); color: var(--brand-accent); padding: 0.5rem 1rem; border-radius: 2px; font-size: 0.875rem; font-weight: 600; text-decoration: none;">Manage Products</a>
+      <a href="/admin/orders" style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(250,247,242,0.05); border: 1px solid rgba(250,247,242,0.12); color: rgba(250,247,242,0.7); padding: 0.5rem 1rem; border-radius: 2px; font-size: 0.875rem; font-weight: 600; text-decoration: none;">View Orders</a>
+      <a href="/admin/messages" style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(250,247,242,0.05); border: 1px solid rgba(250,247,242,0.12); color: rgba(250,247,242,0.7); padding: 0.5rem 1rem; border-radius: 2px; font-size: 0.875rem; font-weight: 600; text-decoration: none;">View Messages</a>
+      <a href="/shop" target="_blank" style="display: inline-flex; align-items: center; gap: 0.5rem; background: transparent; border: 1px solid rgba(250,247,242,0.12); color: rgba(250,247,242,0.4); padding: 0.5rem 1rem; border-radius: 2px; font-size: 0.875rem; font-weight: 600; text-decoration: none;">View Storefront ↗</a>
+    </div>
+  </div>
+</AdminLayout>

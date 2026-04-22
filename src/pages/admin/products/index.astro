@@ -1,0 +1,55 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { requireAdmin } from '../../../lib/requireAdmin';
+import { ssrClient } from '../../../lib/supabase';
+
+export const prerender = false;
+
+const guard = await requireAdmin(Astro);
+if (guard) return guard;
+
+const sb = ssrClient(Astro.cookies)!;
+const { data: products } = await sb
+  .from('products')
+  .select('id, slug, name, price_pence, inventory, vendor, published_at, updated_at')
+  .order('created_at', { ascending: false });
+---
+
+<AdminLayout title="Products">
+  <div style="background: #111; border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; overflow: hidden;">
+    <table style="width: 100%; font-size: 0.875rem; border-collapse: collapse;">
+      <thead>
+        <tr style="background: rgba(250,247,242,0.03); border-bottom: 1px solid rgba(250,247,242,0.08);">
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Product</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Price</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Stock</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Status</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(products ?? []).map(p => (
+          <tr style="border-bottom: 1px solid rgba(250,247,242,0.04);">
+            <td style="padding: 0.75rem 1rem;">
+              <p style="font-weight: 600; margin-bottom: 0.1rem;">{p.name}</p>
+              <p style="font-size: 0.75rem; color: rgba(250,247,242,0.4);">{p.vendor} · {p.slug}</p>
+            </td>
+            <td style="padding: 0.75rem 1rem;">${(p.price_pence / 100).toFixed(2)}</td>
+            <td style="padding: 0.75rem 1rem;">{p.inventory}</td>
+            <td style="padding: 0.75rem 1rem;">
+              <span style={`font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 2px; background: ${p.published_at ? 'rgba(34,197,94,0.15)' : 'rgba(250,247,242,0.08)'}; color: ${p.published_at ? '#4ade80' : 'rgba(250,247,242,0.5)'};`}>
+                {p.published_at ? 'Published' : 'Draft'}
+              </span>
+            </td>
+            <td style="padding: 0.75rem 1rem;">
+              <a href={`/admin/products/${p.id}`} style="color: var(--brand-accent); font-size: 0.8rem; font-weight: 600; text-decoration: none;">Edit →</a>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    {!products?.length && (
+      <p style="text-align: center; padding: 3rem; color: rgba(250,247,242,0.4);">No products found.</p>
+    )}
+  </div>
+</AdminLayout>

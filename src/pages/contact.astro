@@ -1,0 +1,158 @@
+---
+import Base from '../layouts/Base.astro';
+import { anonClient } from '../lib/supabase';
+
+const sb = anonClient();
+let faqs: any[] = [];
+if (sb) {
+  const { data } = await sb.from('faqs').select('question, answer_html').eq('page_slug', 'faq').order('sort_order');
+  faqs = data ?? [];
+}
+
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://harmony-threads-xk7q.vercel.app';
+
+const contactSchema = {
+  "@context": "https://schema.org",
+  "@type": "ContactPage",
+  "name": "Contact Harmony Threads",
+  "url": `${siteUrl}/contact`
+};
+
+const faqSchema = faqs.length > 0 ? {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": faqs.map(f => ({
+    "@type": "Question",
+    "name": f.question,
+    "acceptedAnswer": { "@type": "Answer", "text": f.answer_html?.replace(/<[^>]+>/g, '') ?? '' }
+  }))
+} : null;
+
+const schemas = faqSchema ? [contactSchema, faqSchema] : [contactSchema];
+---
+
+<Base
+  title="Contact Us | Harmony Threads"
+  description="Get in touch with Harmony Threads. Questions about orders, sizing, digital downloads, or just want to talk music — we reply within 24 hours."
+  structuredData={schemas}
+>
+  <div style="padding-top: 5rem; min-height: 100vh; background: #0f0f0f;">
+    <section style="padding: 6rem 0;">
+      <div class="container">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-16">
+          <!-- Left: contact info -->
+          <div>
+            <p class="text-xs font-semibold tracking-widest uppercase mb-4" style="color: var(--brand-accent);">Get in touch</p>
+            <h1 style="font-family: var(--font-display); font-size: clamp(2.5rem, 4vw, 3.5rem); font-weight: 900; line-height: 0.95; letter-spacing: -0.02em; margin-bottom: 1.5rem;">
+              We reply within 24 hours.
+            </h1>
+            <p style="color: rgba(250,247,242,0.6); line-height: 1.8; margin-bottom: 2rem;">
+              Questions about orders, sizing, digital downloads, or anything else — drop us a message. Every email goes to a real human who actually knows the catalogue.
+            </p>
+            
+            <div class="space-y-4 mt-8">
+              <div style="padding: 1.25rem 1.5rem; background: rgba(250,247,242,0.03); border: 1px solid rgba(250,247,242,0.08); border-radius: 2px;">
+                <p class="text-xs font-semibold tracking-widest uppercase mb-1" style="color: rgba(250,247,242,0.4);">Response time</p>
+                <p style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 700;">Under 24 hours, usually same day</p>
+              </div>
+              <div style="padding: 1.25rem 1.5rem; background: rgba(250,247,242,0.03); border: 1px solid rgba(250,247,242,0.08); border-radius: 2px;">
+                <p class="text-xs font-semibold tracking-widest uppercase mb-1" style="color: rgba(250,247,242,0.4);">Best for</p>
+                <p style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 700;">Orders, sizing questions, digital downloads</p>
+              </div>
+            </div>
+
+            {/* FAQs */}
+            {faqs.length > 0 && (
+              <div class="mt-12">
+                <h2 style="font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; margin-bottom: 1.5rem;">Common questions</h2>
+                <div class="space-y-4">
+                  {faqs.slice(0, 4).map(f => (
+                    <div style="border-bottom: 1px solid rgba(250,247,242,0.08); padding-bottom: 1rem;">
+                      <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.5rem;">{f.question}</h3>
+                      <div class="text-sm" style="color: rgba(250,247,242,0.55);" set:html={f.answer_html} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <!-- Right: contact form -->
+          <div style="background: #111; border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; padding: 2.5rem;">
+            <h2 style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem;">Send a message</h2>
+            <form id="contact-form" action="/api/contact" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
+              <!-- Honeypot -->
+              <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true" />
+              <input type="hidden" name="rendered_at" id="rendered_at" />
+              
+              <div>
+                <label class="text-xs font-semibold tracking-widest uppercase mb-2 block" style="color: rgba(250,247,242,0.5);" for="name">Name</label>
+                <input 
+                  type="text" 
+                  id="name"
+                  name="name" 
+                  required 
+                  placeholder="Your name"
+                  style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.75rem 1rem; border-radius: 2px; color: var(--brand-paper); font-family: var(--font-body); font-size: 0.9rem; outline: none;"
+                />
+              </div>
+              
+              <div>
+                <label class="text-xs font-semibold tracking-widest uppercase mb-2 block" style="color: rgba(250,247,242,0.5);" for="email">Email</label>
+                <input 
+                  type="email" 
+                  id="email"
+                  name="email" 
+                  required 
+                  placeholder="your@email.com"
+                  style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.75rem 1rem; border-radius: 2px; color: var(--brand-paper); font-family: var(--font-body); font-size: 0.9rem; outline: none;"
+                />
+              </div>
+              
+              <div>
+                <label class="text-xs font-semibold tracking-widest uppercase mb-2 block" style="color: rgba(250,247,242,0.5);" for="message">Message</label>
+                <textarea 
+                  id="message"
+                  name="message" 
+                  required 
+                  rows="5"
+                  placeholder="What can we help with?"
+                  style="width: 100%; background: rgba(250,247,242,0.04); border: 1px solid rgba(250,247,242,0.12); padding: 0.75rem 1rem; border-radius: 2px; color: var(--brand-paper); font-family: var(--font-body); font-size: 0.9rem; outline: none; resize: vertical;"
+                />
+              </div>
+              
+              <button type="submit" class="btn-primary w-full justify-center py-3">Send Message</button>
+              <div id="form-msg" class="text-sm text-center" style="display: none;"></div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</Base>
+
+<script>
+  document.getElementById('rendered_at')!.value = Date.now().toString();
+  document.getElementById('contact-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const msg = document.getElementById('form-msg')!;
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    
+    const res = await fetch('/api/contact', { method: 'POST', body: new FormData(form) });
+    msg.style.display = 'block';
+    if (res.ok) {
+      msg.textContent = "Message sent. We'll be in touch within 24 hours.";
+      msg.style.color = '#4ade80';
+      form.reset();
+      document.getElementById('rendered_at')!.value = Date.now().toString();
+    } else {
+      msg.textContent = 'Something went wrong. Please try again.';
+      msg.style.color = '#f87171';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Send Message';
+  });
+</script>

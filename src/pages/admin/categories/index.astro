@@ -1,0 +1,47 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { requireAdmin } from '../../../lib/requireAdmin';
+import { ssrClient } from '../../../lib/supabase';
+
+export const prerender = false;
+
+const guard = await requireAdmin(Astro);
+if (guard) return guard;
+
+const sb = ssrClient(Astro.cookies)!;
+const { data: categories } = await sb
+  .from('categories')
+  .select('id, slug, name, description, published_at')
+  .order('sort_order');
+---
+
+<AdminLayout title="Categories">
+  <div style="background: #111; border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; overflow: hidden;">
+    <table style="width: 100%; font-size: 0.875rem; border-collapse: collapse;">
+      <thead>
+        <tr style="background: rgba(250,247,242,0.03); border-bottom: 1px solid rgba(250,247,242,0.08);">
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Category</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Slug</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Status</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(categories ?? []).map(c => (
+          <tr style="border-bottom: 1px solid rgba(250,247,242,0.04);">
+            <td style="padding: 0.75rem 1rem; font-weight: 600;">{c.name}</td>
+            <td style="padding: 0.75rem 1rem; font-family: monospace; font-size: 0.8rem; color: rgba(250,247,242,0.5);">{c.slug}</td>
+            <td style="padding: 0.75rem 1rem;">
+              <span style={`font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 2px; background: ${c.published_at ? 'rgba(34,197,94,0.15)' : 'rgba(250,247,242,0.08)'}; color: ${c.published_at ? '#4ade80' : 'rgba(250,247,242,0.5)'};`}>
+                {c.published_at ? 'Published' : 'Draft'}
+              </span>
+            </td>
+            <td style="padding: 0.75rem 1rem;">
+              <a href={`/collections/${c.slug}`} target="_blank" style="color: var(--brand-accent); font-size: 0.8rem; font-weight: 600; text-decoration: none;">View ↗</a>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

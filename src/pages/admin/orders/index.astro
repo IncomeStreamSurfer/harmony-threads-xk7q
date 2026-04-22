@@ -1,0 +1,51 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { requireAdmin } from '../../../lib/requireAdmin';
+import { ssrClient } from '../../../lib/supabase';
+
+export const prerender = false;
+
+const guard = await requireAdmin(Astro);
+if (guard) return guard;
+
+const sb = ssrClient(Astro.cookies)!;
+const { data: orders } = await sb
+  .from('orders')
+  .select('id, stripe_session_id, customer_email, customer_name, amount_total, currency, status, created_at')
+  .order('created_at', { ascending: false });
+---
+
+<AdminLayout title="Orders">
+  <div style="background: #111; border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; overflow: hidden;">
+    <table style="width: 100%; font-size: 0.875rem; border-collapse: collapse;">
+      <thead>
+        <tr style="background: rgba(250,247,242,0.03); border-bottom: 1px solid rgba(250,247,242,0.08);">
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Order ID</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Customer</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Amount</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Status</th>
+          <th style="text-align: left; padding: 0.75rem 1rem; color: rgba(250,247,242,0.5); font-weight: 500;">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(orders ?? []).map(o => (
+          <tr style="border-bottom: 1px solid rgba(250,247,242,0.04);">
+            <td style="padding: 0.75rem 1rem; font-family: monospace; font-size: 0.75rem; color: rgba(250,247,242,0.5);">{o.stripe_session_id?.slice(-10).toUpperCase() ?? o.id.slice(-8).toUpperCase()}</td>
+            <td style="padding: 0.75rem 1rem;">
+              <p style="font-weight: 500;">{o.customer_name ?? '—'}</p>
+              <p style="font-size: 0.75rem; color: rgba(250,247,242,0.4);">{o.customer_email ?? '—'}</p>
+            </td>
+            <td style="padding: 0.75rem 1rem;">${((o.amount_total ?? 0) / 100).toFixed(2)} {(o.currency ?? 'USD').toUpperCase()}</td>
+            <td style="padding: 0.75rem 1rem;">
+              <span style={`font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 2px; background: ${o.status === 'paid' ? 'rgba(34,197,94,0.15)' : 'rgba(250,247,242,0.08)'}; color: ${o.status === 'paid' ? '#4ade80' : 'rgba(250,247,242,0.6)'};`}>{o.status}</span>
+            </td>
+            <td style="padding: 0.75rem 1rem; color: rgba(250,247,242,0.5);">{new Date(o.created_at).toLocaleDateString()}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    {!orders?.length && (
+      <p style="text-align: center; padding: 3rem; color: rgba(250,247,242,0.4);">No orders yet.</p>
+    )}
+  </div>
+</AdminLayout>

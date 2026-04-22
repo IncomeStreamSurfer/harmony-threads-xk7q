@@ -1,0 +1,41 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { requireAdmin } from '../../../lib/requireAdmin';
+import { ssrClient } from '../../../lib/supabase';
+
+export const prerender = false;
+
+const guard = await requireAdmin(Astro);
+if (guard) return guard;
+
+const sb = ssrClient(Astro.cookies)!;
+const { data: messages } = await sb
+  .from('contact_messages')
+  .select('id, name, email, message, created_at, replied_at')
+  .order('created_at', { ascending: false });
+---
+
+<AdminLayout title="Messages">
+  <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+    {!messages?.length ? (
+      <p style="color: rgba(250,247,242,0.4); text-align: center; padding: 3rem;">No messages yet.</p>
+    ) : messages.map(m => (
+      <div style="background: #111; border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; padding: 1.25rem;">
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <p style="font-weight: 600; margin-bottom: 0.2rem;">{m.name}</p>
+            <a href={`mailto:${m.email}`} style="font-size: 0.8rem; color: var(--brand-accent);">{m.email}</a>
+          </div>
+          <div style="text-align: right;">
+            <p style="font-size: 0.75rem; color: rgba(250,247,242,0.4);">{new Date(m.created_at).toLocaleDateString()}</p>
+            {m.replied_at && <p style="font-size: 0.75rem; color: #4ade80;">Replied</p>}
+          </div>
+        </div>
+        <p style="font-size: 0.875rem; line-height: 1.6; color: rgba(250,247,242,0.7); white-space: pre-wrap;">{m.message}</p>
+        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(250,247,242,0.06);">
+          <a href={`mailto:${m.email}?subject=Re: Your message to Harmony Threads`} style="font-size: 0.8rem; color: var(--brand-accent); font-weight: 600; text-decoration: none;">Reply via email →</a>
+        </div>
+      </div>
+    ))}
+  </div>
+</AdminLayout>

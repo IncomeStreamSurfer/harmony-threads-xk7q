@@ -1,0 +1,23 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Checkout Cancelled | Harmony Threads"
+  description="Your cart is saved — come back when you're ready."
+  noindex={true}
+>
+  <div style="padding-top: 8rem; padding-bottom: 6rem; min-height: 100vh; background: #0f0f0f;">
+    <div class="container" style="max-width: 560px; text-align: center;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(250,247,242,0.05); border: 1px solid rgba(250,247,242,0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 9a3 3 0 1 1 6 0c0 2-3 3-3 3"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+      </div>
+      <h1 style="font-family: var(--font-display); font-size: 2.5rem; font-weight: 900; margin-bottom: 0.75rem;">Cart saved</h1>
+      <p style="color: rgba(250,247,242,0.6); margin-bottom: 2.5rem;">No worries — your items are waiting. Head back to the shop whenever you're ready.</p>
+      <div class="flex gap-4 justify-center">
+        <a href="/shop" class="btn-primary">Back to Shop</a>
+        <a href="/" class="btn-ghost">Home</a>
+      </div>
+    </div>
+  </div>
+</Base>

@@ -1,0 +1,136 @@
+---
+import Base from '../../layouts/Base.astro';
+import { anonClient } from '../../lib/supabase';
+import { safeHtml } from '../../lib/sanitize';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+const sb = anonClient();
+
+if (!sb) return Astro.redirect('/shop');
+
+const { data: category } = await sb
+  .from('categories')
+  .select('id, slug, name, description, body_html, image_url, meta_title, meta_description')
+  .eq('slug', slug!)
+  .maybeSingle();
+
+if (!category) return Astro.redirect('/shop');
+
+const { data: productLinks } = await sb
+  .from('product_categories')
+  .select('products(id, slug, name, description, price_pence, compare_at_pence, image_url, vendor, product_type)')
+  .eq('category_id', category.id);
+
+const products = (productLinks ?? []).map((pl: any) => pl.products).filter(Boolean);
+
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://harmony-threads-xk7q.vercel.app';
+
+const collectionSchema = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": category.name,
+  "url": `${siteUrl}/collections/${category.slug}`,
+  "mainEntity": {
+    "@type": "ItemList",
+    "itemListElement": products.map((p: any, i: number) => ({
+      "@type": "ListItem",
+      "position": i + 1,
+      "url": `${siteUrl}/product/${p.slug}`,
+      "name": p.name
+    }))
+  }
+};
+
+const breadcrumb = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": siteUrl },
+    { "@type": "ListItem", "position": 2, "name": "Shop", "item": `${siteUrl}/shop` },
+    { "@type": "ListItem", "position": 3, "name": category.name, "item": `${siteUrl}/collections/${category.slug}` }
+  ]
+};
+---
+
+<Base
+  title={category.meta_title ?? `${category.name} | Harmony Threads`}
+  description={category.meta_description ?? category.description ?? ''}
+  ogImage={category.image_url ?? undefined}
+  structuredData={[collectionSchema, breadcrumb]}
+>
+  <div style="padding-top: 5rem; min-height: 100vh; background: #0f0f0f;">
+    <!-- Collection header -->
+    <section style="background: #111; border-bottom: 1px solid rgba(250,247,242,0.06); padding: 4rem 0 3rem;">
+      <div class="container">
+        <nav class="flex items-center gap-2 text-xs mb-4" style="color: rgba(250,247,242,0.4);">
+          <a href="/" class="hover:text-[#E63946]">Home</a>
+          <span>/</span>
+          <a href="/shop" class="hover:text-[#E63946]">Shop</a>
+          <span>/</span>
+          <span style="color: rgba(250,247,242,0.7);">{category.name}</span>
+        </nav>
+        <p class="text-xs font-semibold tracking-widest uppercase mb-3" style="color: var(--brand-accent);">Collection</p>
+        <h1 style="font-family: var(--font-display); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900; line-height: 0.95; letter-spacing: -0.02em;">{category.name}</h1>
+        <p class="mt-3 text-sm" style="color: rgba(250,247,242,0.5);">{products.length} product{products.length !== 1 ? 's' : ''}</p>
+      </div>
+    </section>
+
+    <!-- Intro copy -->
+    {category.body_html && (
+      <section style="padding: 3rem 0; border-bottom: 1px solid rgba(250,247,242,0.06); background: #0f0f0f;">
+        <div class="container" style="max-width: 800px;">
+          <div class="prose" style="color: rgba(250,247,242,0.65); line-height: 1.8;" set:html={safeHtml(category.body_html)} />
+        </div>
+      </section>
+    )}
+
+    <!-- Products grid -->
+    <section style="padding: 4rem 0;">
+      <div class="container">
+        {products.length === 0 ? (
+          <p style="color: rgba(250,247,242,0.4); text-align: center; padding: 4rem 0;">No products in this collection yet.</p>
+        ) : (
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map((p: any) => (
+              <a href={`/product/${p.slug}`} class="group block" style="border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; overflow: hidden; transition: border-color 0.2s, transform 0.2s;" onmouseover="this.style.borderColor='rgba(230,57,70,0.4)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(250,247,242,0.08)';this.style.transform='translateY(0)'">
+                <div style="aspect-ratio: 4/3; overflow: hidden; background: #1a1a1a;">
+                  {p.image_url && (
+                    <img src={p.image_url} alt={`${p.name} — ${category.name}`} style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'" />
+                  )}
+                </div>
+                <div style="padding: 1.5rem;">
+                  <p class="text-xs font-semibold tracking-widest uppercase mb-2" style="color: rgba(250,247,242,0.35);">{p.vendor} · {p.product_type}</p>
+                  <h2 style="font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.2;">{p.name}</h2>
+                  <p class="text-sm leading-relaxed mb-4" style="color: rgba(250,247,242,0.55);">{p.description?.slice(0, 100)}...</p>
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <span style="font-size: 1.1rem; font-weight: 700;">${(p.price_pence / 100).toFixed(2)}</span>
+                      {p.compare_at_pence && (
+                        <span class="text-sm ml-2" style="color: rgba(250,247,242,0.3); text-decoration: line-through;">${(p.compare_at_pence / 100).toFixed(2)}</span>
+                      )}
+                    </div>
+                    <span class="text-xs font-semibold" style="color: var(--brand-accent);">View →</span>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+
+    <!-- Cross-link to other collections -->
+    <section style="padding: 3rem 0; border-top: 1px solid rgba(250,247,242,0.06); background: #111;">
+      <div class="container">
+        <p class="text-sm mb-4" style="color: rgba(250,247,242,0.5);">Also browse:</p>
+        <div class="flex flex-wrap gap-4">
+          {['graphic-shirts', 'digital-books', 'accessories'].filter(s => s !== slug).map(s => (
+            <a href={`/collections/${s}`} class="btn-ghost text-sm py-2 px-4">{s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</a>
+          ))}
+        </div>
+      </div>
+    </section>
+  </div>
+</Base>

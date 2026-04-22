@@ -1,0 +1,99 @@
+---
+import Base from '../../layouts/Base.astro';
+import { anonClient } from '../../lib/supabase';
+
+export const prerender = false;
+
+const { tag } = Astro.params;
+const sb = anonClient();
+
+let products: any[] = [];
+if (sb && tag) {
+  // Convert URL slug back to tag (e.g., 'rock-music' -> 'Rock Music')
+  const tagVariants = [
+    tag,
+    tag.replace(/-/g, ' '),
+    tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+  ];
+  
+  const { data } = await sb
+    .from('products')
+    .select('id, slug, name, description, price_pence, compare_at_pence, image_url, vendor, product_type, tags')
+    .not('published_at', 'is', null);
+  
+  // Filter in JS since Supabase text[] requires different syntax
+  products = (data ?? []).filter(p => 
+    p.tags?.some((t: string) => tagVariants.some(tv => t.toLowerCase() === tv.toLowerCase()))
+  );
+}
+
+const displayTag = tag?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) ?? '';
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://harmony-threads-xk7q.vercel.app';
+
+const collectionSchema = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": `#${displayTag} — Harmony Threads`,
+  "url": `${siteUrl}/tags/${tag}`,
+  "mainEntity": {
+    "@type": "ItemList",
+    "itemListElement": products.map((p: any, i: number) => ({
+      "@type": "ListItem",
+      "position": i + 1,
+      "url": `${siteUrl}/product/${p.slug}`,
+      "name": p.name
+    }))
+  }
+};
+---
+
+<Base
+  title={`#${displayTag} Products | Harmony Threads`}
+  description={`Browse Harmony Threads products tagged with ${displayTag}. Music-inspired apparel, digital books, and accessories.`}
+  structuredData={collectionSchema}
+>
+  <div style="padding-top: 5rem; min-height: 100vh; background: #0f0f0f;">
+    <section style="background: #111; border-bottom: 1px solid rgba(250,247,242,0.06); padding: 4rem 0 3rem;">
+      <div class="container">
+        <nav class="flex items-center gap-2 text-xs mb-4" style="color: rgba(250,247,242,0.4);">
+          <a href="/" class="hover:text-[#E63946]">Home</a>
+          <span>/</span>
+          <a href="/shop" class="hover:text-[#E63946]">Shop</a>
+          <span>/</span>
+          <span style="color: rgba(250,247,242,0.7);">#{displayTag}</span>
+        </nav>
+        <p class="text-xs font-semibold tracking-widest uppercase mb-3" style="color: var(--brand-accent);">Tag</p>
+        <h1 style="font-family: var(--font-display); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900; line-height: 0.95; letter-spacing: -0.02em;">#{displayTag}</h1>
+        <p class="mt-3 text-sm" style="color: rgba(250,247,242,0.5);">{products.length} product{products.length !== 1 ? 's' : ''}</p>
+      </div>
+    </section>
+
+    <section style="padding: 4rem 0;">
+      <div class="container">
+        {products.length === 0 ? (
+          <div style="text-align: center; padding: 4rem 0;">
+            <p style="color: rgba(250,247,242,0.4);">No products found for this tag.</p>
+            <a href="/shop" class="btn-primary mt-6 inline-block">Browse All Products</a>
+          </div>
+        ) : (
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map((p: any) => (
+              <a href={`/product/${p.slug}`} class="group block" style="border: 1px solid rgba(250,247,242,0.08); border-radius: 2px; overflow: hidden; transition: border-color 0.2s, transform 0.2s;" onmouseover="this.style.borderColor='rgba(230,57,70,0.4)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(250,247,242,0.08)';this.style.transform='translateY(0)'">
+                <div style="aspect-ratio: 4/3; overflow: hidden; background: #1a1a1a;">
+                  {p.image_url && <img src={p.image_url} alt={`${p.name}`} style="width: 100%; height: 100%; object-fit: cover;" />}
+                </div>
+                <div style="padding: 1.5rem;">
+                  <h2 style="font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem;">{p.name}</h2>
+                  <div class="flex items-center justify-between">
+                    <span style="font-size: 1.1rem; font-weight: 700;">${(p.price_pence / 100).toFixed(2)}</span>
+                    <span class="text-xs font-semibold" style="color: var(--brand-accent);">View →</span>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  </div>
+</Base>
